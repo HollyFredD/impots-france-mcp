@@ -51,7 +51,8 @@ USER node
 EXPOSE 8080
 
 # La sonde réutilise le hostname public autorisé : le contrôle Host reste actif.
+# node:http est utilisé car fetch() ignore silencieusement l'en-tête Host.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "const token=(process.env.MCP_AUTH_TOKENS||'').split(',')[0];const host=(process.env.ALLOWED_HOSTNAMES||'').split(',')[0];if(!token||!host)process.exit(1);fetch('http://127.0.0.1:'+(process.env.PORT||8080)+(process.env.HEALTH_PATH||'/healthz'),{headers:{authorization:'Bearer '+token,host}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "const http=require('node:http');const token=(process.env.MCP_AUTH_TOKENS||'').split(',')[0];const host=(process.env.ALLOWED_HOSTNAMES||'').split(',')[0];if(!token||!host)process.exit(1);const req=http.request({host:'127.0.0.1',port:Number(process.env.PORT||8080),path:process.env.HEALTH_PATH||'/healthz',headers:{authorization:'Bearer '+token,host}},res=>{res.resume();process.exit(res.statusCode===200?0:1);});req.on('error',()=>process.exit(1));req.end();"
 
 CMD ["node", "edge/dist/index.js"]
