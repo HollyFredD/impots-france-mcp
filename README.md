@@ -18,8 +18,11 @@ Dans un client compatible **MCP Streamable HTTP**, ajouter un serveur :
 | --- | --- |
 | Nom | `Impôts France` |
 | Transport | Streamable HTTP |
-| URL | `https://<votre-domaine>/mcp` |
+| URL | `https://<votre-domaine><MCP_PATH>`, par exemple `https://mcp.example.com/impots` |
 | Authentification | `Authorization: Bearer <jeton>` |
+
+Le chemin est réglé par `MCP_PATH` et doit correspondre exactement à l'URL
+annoncée. Le déploiement de référence sert `https://mcp.farjon.fr/impots`.
 
 Sans jeton valide, l'endpoint répond `401 Unauthorized`. Le schéma d'API des
 62 outils est décrit dans [`contracts/tools.json`](contracts/tools.json).
@@ -82,8 +85,12 @@ le serveur signale la limite au lieu d'inventer une valeur.
 ## Architecture
 
 ```text
-Client MCP → Pangolin (TLS) → tunnel Newt → Node/HTTP → WebAssembly → moteur Rust → registres TOML
+Client MCP → Pangolin (TLS) → Node/HTTP → WebAssembly → moteur Rust → registres TOML
 ```
+
+Pangolin joint le conteneur soit directement par le réseau Docker quand il tourne
+sur le même hôte, soit par un tunnel Newt quand le serveur MCP est ailleurs.
+
 
 L'adaptateur TypeScript expose MCP et valide les schémas. Le moteur Rust applique
 les règles contenues dans les registres TOML datés.
@@ -132,6 +139,10 @@ npm start
 Variante stdio, pour un client local : `npm run start:stdio`.
 
 Déploiement conteneurisé : voir [`docs/self-hosting-pangolin.md`](docs/self-hosting-pangolin.md).
+
+- Pangolin sur le même hôte que le serveur MCP : [`deploy/vps/`](deploy/vps/) ;
+- Pangolin distant, avec tunnel Newt : [`compose.yaml`](compose.yaml).
+
 Toute modification fiscale doit être sourcée, testée et relue selon
 [`CONTRIBUTING.md`](CONTRIBUTING.md).
 

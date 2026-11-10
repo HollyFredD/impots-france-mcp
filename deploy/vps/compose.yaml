@@ -1,0 +1,46 @@
+# Stack de référence : Pangolin et le serveur MCP sur le même hôte.
+#
+# Aucun conteneur Newt : le conteneur rejoint le réseau Docker de Pangolin et
+# Traefik le joint par son nom de service. Aucun port n'est publié sur l'hôte.
+#
+# Le fichier .env est celui de la racine du dépôt, ou une copie locale.
+
+name: impots-mcp
+
+services:
+  impots-mcp:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: impots-france-mcp:local
+    container_name: impots-mcp
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: ../../.env
+        required: true
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8080"
+    expose:
+      - "8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - pangolin_frontend
+
+networks:
+  pangolin_frontend:
+    external: true
+    # Adapter si la stack Pangolin utilise un autre nom de réseau.
+    name: pangolin_frontend
