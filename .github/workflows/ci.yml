@@ -15,7 +15,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,6 +39,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Check Rust formatting
         run: cargo fmt --all --check
 
@@ -48,20 +51,52 @@ jobs:
       - name: Test Rust
         run: cargo test --workspace
 
-      - name: Build Wasm
-        run: npm run build:wasm
+      - name: Build
+        run: npm run build
 
-      - name: Check edge adapter
+      - name: Check server
         run: npm run check -w edge
 
-      - name: Validate Worker bundle
-        working-directory: edge
-        run: npx wrangler deploy --dry-run --env staging --outdir ../dist/worker
+      - name: Smoke test the HTTP server
+        run: |
+          TOKEN="$(openssl rand -base64 48)"
+          MCP_AUTH_TOKENS="$TOKEN" ALLOWED_HOSTNAMES=localhost HOST=127.0.0.1 PORT=8080 \
+            node edge/dist/index.js &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
+          for _ in $(seq 1 30); do
+            if curl -s -o /dev/null -H "authorization: Bearer $TOKEN" -H "host: localhost" http://127.0.0.1:8080/healthz; then break; fi
+            sleep 0.5
+          done
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8080/mcp -H 'content-type: application/json' -H 'host: localhost' -d '{}')" = "401"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H "authorization: Bearer $TOKEN" -H "host: localhost" http://127.0.0.1:8080/healthz)" = "200"
 
-      - name: Upload Worker bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Build image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
-          name: worker-bundle-${{ github.sha }}
-          path: dist/worker
-          if-no-files-found: error
-          retention-days: 14
+          context: .
+          push: false
+          load: true
+          tags: impots-france-mcp:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Validate compose file
+        run: docker compose config --quiet
+        env:
+          PANGOLIN_ENDPOINT: https://pangolin.example.com
+          NEWT_ID: ci
+          NEWT_SECRET: ci
+          MCP_AUTH_TOKENS: ci-token-placeholder-not-used-here-0123456789
+          ALLOWED_HOSTNAMES: mcp.example.com
+          NEWT_LOG_LEVEL: INFO

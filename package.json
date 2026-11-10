@@ -16,15 +16,11 @@
     "build": "npm run build:wasm && npm run build -w edge",
     "build:wasm": "wasm-pack build crates/fiscal-wasm --target bundler --out-dir ../../edge/src/generated/wasm --release && node scripts/patch-wasm-bindgen.mjs",
     "check": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run check -w edge",
-    "test": "cargo test --workspace && npm test -w edge"
+    "test": "cargo test --workspace && npm test -w edge",
+    "start": "npm run start -w edge",
+    "start:stdio": "npm run start:stdio -w edge"
   },
   "devDependencies": {
-    "undici": "7.29.0",
     "wasm-pack": "0.15.0"
-  },
-  "overrides": {
-    "miniflare": {
-      "undici": "$undici"
-    }
   }
 }

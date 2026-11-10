@@ -6,26 +6,24 @@
   "repository": "github:murillo-consulting/impots-france-mcp",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "build": "tsc --noEmit",
-    "check": "tsc --noEmit && vitest run",
+    "build": "tsc -p tsconfig.build.json && node ../scripts/copy-wasm-to-dist.mjs",
+    "check": "tsc --noEmit -p tsconfig.json && vitest run",
     "test": "vitest run",
-    "dev": "wrangler dev",
-    "deploy:staging": "wrangler deploy --env staging",
-    "deploy:production": "wrangler deploy --env production"
+    "start": "node dist/index.js",
+    "start:stdio": "node dist/stdio.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "2.0.0",
-    "agents": "0.20.1",
-    "jose": "6.2.7",
-    "zod": "4.4.3"
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "0.20.1",
-    "@cloudflare/workers-types": "5.20260801.1",
-    "@modelcontextprotocol/client": "2.0.0",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@types/node": "22.20.5",
     "typescript": "7.0.2",
-    "vitest": "4.1.10",
-    "wrangler": "4.118.0"
+    "vitest": "4.1.12"
   }
 }

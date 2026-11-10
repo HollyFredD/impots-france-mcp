@@ -1,0 +1,56 @@
+name: impots-france-mcp
+
+services:
+  impots-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: impots-france-mcp:local
+    container_name: impots-mcp
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8080"
+    # Aucun port publié : seule l'instance Newt joint le service.
+    expose:
+      - "8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - mcp
+
+  newt:
+    image: fosrl/newt:latest
+    container_name: impots-mcp-newt
+    restart: unless-stopped
+    init: true
+    environment:
+      PANGOLIN_ENDPOINT: ${PANGOLIN_ENDPOINT:?PANGOLIN_ENDPOINT manquant}
+      NEWT_ID: ${NEWT_ID:?NEWT_ID manquant}
+      NEWT_SECRET: ${NEWT_SECRET:?NEWT_SECRET manquant}
+      LOG_LEVEL: ${NEWT_LOG_LEVEL:-INFO}
+    depends_on:
+      impots-mcp:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - mcp
+
+networks:
+  mcp:
+    driver: bridge

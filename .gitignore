@@ -13,3 +13,6 @@
 infra/backend.hcl
 /coverage/
 /legacy/__pycache__/
+
+# Build serveur
+edge/dist/
